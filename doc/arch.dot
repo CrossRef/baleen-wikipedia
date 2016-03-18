@@ -1,0 +1,54 @@
+digraph architecture {
+  rankdir="LR";
+
+
+  // external
+  rcstream ;
+  wikipedia_restbase;
+  websiteclient;
+  lagotto;
+  
+  store [shape=box];
+  s3 [shape=box];
+
+subgraph cluster_aws {
+
+  // stages
+  ingest [shape=component];
+  diff [shape=component];
+  push [shape=component];
+  serve [shape=component];
+  archive [shape=component];
+
+
+  // queues
+  changes_q [shape=box];
+  push_diffs_q [shape=box];
+  publish_diffs_q [shape=box];
+
+  }
+
+
+  rcstream -> ingest;
+
+  ingest -> changes_q;
+  
+  changes_q -> diff;
+  
+  diff -> wikipedia_restbase;
+  diff -> push_diffs_q;
+  diff -> publish_diffs_q;
+  diff -> store;
+
+  store -> archive;
+  archive -> s3;
+
+  publish_diffs_q -> serve;
+  push_diffs_q -> push;
+
+  serve -> websiteclient;
+
+  push -> lagotto;
+
+
+}
