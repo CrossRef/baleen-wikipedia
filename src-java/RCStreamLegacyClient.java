@@ -67,9 +67,9 @@ public class RCStreamLegacyClient {
             @Override
             public void on(String event, IOAcknowledge ack, Object... args) {
                 RCStreamLegacyClient.this.callback.invoke(event, args);
+
             }
         });
-        System.out.println("CON");
 
 	}
 }

@@ -28,6 +28,22 @@ Takes events off the message queue and serves them up in a web interface.
 
 Takes events off the message queue and saves them to storage.
 
+## Run in development
+
+`activemq console`
+
+http://localhost:8161/admin/ 
+
+admin/admin
+
+`lein run ingest`
+
+`lein run diff`
+
+`lein run push`
+
+`lein run serve`
+
 ## Installation
 
 The Wikipedia Recent Changes stream uses an obsolete version of Socket.IO ([details](https://phabricator.wikimedia.org/T68232)), so we need to use an unsupported version. To install:

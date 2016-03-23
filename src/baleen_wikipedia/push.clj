@@ -1,6 +1,6 @@
 (ns baleen-wikipedia.push
   (:import  [java.util.logging Logger Level])
-  (:require [baleen-wikipedia.interfaces.queue.amqp :refer [queue-listen-f]])
+  (:require [baleen-wikipedia.interfaces.queue.stomp :refer [queue-listen-f]])
   (:require [clojure.tools.logging :refer [error info]]
             [clojure.data.json :as json])
   (:require [org.httpkit.client :as http-client]
@@ -10,6 +10,7 @@
 
 (defn send-triple
   [payload-str message]
+  (prn "SEND TRIPLE" payload-str)
   (let [payload (json/read-str payload-str)
 
         old-revision (get payload "old-revision")
@@ -57,7 +58,7 @@
                               :subj subject_metadata}}
           nil)]
         (prn "PAYLOAD" payload)
-    (when payload
+    (if payload
       (http-client/request 
         {:url endpoint
          :method :post
@@ -66,7 +67,9 @@
       (fn [response]
         (prn "RESPONSE" response)
         (.acknowledge message)
-        )))
+        ))
+      
+      (.acknowledge message))
     
 
     ))

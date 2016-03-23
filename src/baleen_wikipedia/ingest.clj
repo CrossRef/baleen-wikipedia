@@ -5,8 +5,8 @@
     (:require [overtone.at-at :as at-at]
               [clj-time.core :as clj-time]
               [environ.core :refer [env]])
-    (:require [baleen-wikipedia.interfaces.queue.amqp :refer [queue-send-f]])
-    (:require [clojure.tools.logging :refer [error info]]
+    (:require [baleen-wikipedia.interfaces.queue.stomp :refer [queue-send-f]])
+    (:require [clojure.tools.logging :refer [error info debug]]
               [clojure.data.json :as json]))
 
 (defonce at-at-pool (at-at/mk-pool))
@@ -19,6 +19,7 @@
         event-type (get data "type")
         input-event-uuid (.toString (UUID/randomUUID))
         new-payload (json/write-str (assoc data "input-event-id" input-event-uuid))]
+        (info "Process " input-event-uuid)
       (when (= event-type "edit")
         (@send-f new-payload)))
   (catch Exception e (prn e))))
