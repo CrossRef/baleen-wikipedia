@@ -144,11 +144,8 @@
                            :server-name server-name
                            :input-event-id input-event-id
                            :timestamp timestamp})))
-  (.acknowledge message))
-
-
-
-        
+  ; (.acknowledge message)
+)
 
 
 (defn run []

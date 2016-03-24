@@ -68,10 +68,8 @@
         (fn [response]
           (prn "RESPONSE" response)
           (.acknowledge message)))
-      (.acknowledge message))
-    
-
-    ))
+      ; (.acknowledge message)
+      )))
 
 
 

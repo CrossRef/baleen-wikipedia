@@ -12,12 +12,13 @@
 
 (def factory (new StompJmsConnectionFactory))
 (.setBrokerURI factory connection-uri)
-(def connection (.createConnection factory user password))
-(.start connection)
 
 ; TODO transactions?
 (defn create-session []
-  (.createSession connection false Session/CLIENT_ACKNOWLEDGE))
+  (let [connection (.createConnection factory user password)]
+    (.start connection)
+    (.createSession connection false Session/AUTO_ACKNOWLEDGE)))
+
 (def session (create-session))
 
 (defn queue-send-f
