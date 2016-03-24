@@ -59,16 +59,15 @@
           nil)]
         (prn "PAYLOAD" payload)
     (if payload
-      (http-client/request 
+      ; Block on reply otherwise we ack messages out of order.
+      @(http-client/request 
         {:url endpoint
          :method :post
          :headers {"Authorization" (str "Token token=" auth-token) "Content-Type" "application/json"}
          :body (json/write-str payload)}
-      (fn [response]
-        (prn "RESPONSE" response)
-        (.acknowledge message)
-        ))
-      
+        (fn [response]
+          (prn "RESPONSE" response)
+          (.acknowledge message)))
       (.acknowledge message))
     
 
