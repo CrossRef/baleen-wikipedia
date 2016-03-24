@@ -31,4 +31,5 @@
         :activemq-password "admin"
         :source-token "a147a49b-8ef1-4d2a-92b3-541ee7c87f2f"
         :auth-token ""
+        :diff-threads "5"
   })

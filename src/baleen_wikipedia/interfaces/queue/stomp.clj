@@ -12,18 +12,19 @@
 
 (def factory (new StompJmsConnectionFactory))
 (.setBrokerURI factory connection-uri)
-
 (def connection (.createConnection factory user password))
-
 (.start connection)
 
 ; TODO transactions?
-(def session (.createSession connection false Session/CLIENT_ACKNOWLEDGE))
+(defn create-session []
+  (.createSession connection false Session/CLIENT_ACKNOWLEDGE))
+(def session (create-session))
 
 (defn queue-send-f
   "Return a function that allows broadcast into the named queue."
   [queue-name]
-  (let [destination (new StompJmsDestination (str "queue/" queue-name))
+  (let [connection (.createConnection factory user password)
+        destination (new StompJmsDestination (str "queue/" queue-name))
         producer (.createProducer session destination)]
     (fn [text]
       (.send producer (.createTextMessage session text)))))
@@ -32,14 +33,16 @@
 (defn topic-send-f
   "Return a function that allows broadcast into the named topic."
   [queue-name]
-  (let [destination (new StompJmsDestination (str "topic/" queue-name))
+  (let [connection (.createConnection factory user password)
+        destination (new StompJmsDestination (str "topic/" queue-name))
         producer (.createProducer session destination)]
     (fn [text]
       (.send producer (.createTextMessage session text)))))
 
 (defn queue-listen-f
   [queue-name callback-f]
-  (let [destination (new StompJmsDestination (str "queue/" queue-name))
+  (let [connection (.createConnection factory user password)
+        destination (new StompJmsDestination (str "queue/" queue-name))
         consumer (.createConsumer session destination)]
     (loop []
       ; Block this thread on wait.

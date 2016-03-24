@@ -21,6 +21,7 @@
 (def push-diffs-send-f (atom nil))
 (def store-diffs-send-f (atom nil))
 
+(def num-threads (Integer/parseInt (or (env :diff-threads) "1")))
 
 (defn build-restbase-url
   "Build a URL that can be retrieved from RESTBase"
@@ -156,4 +157,12 @@
   (reset! store-diffs-send-f (queue-send-f "store-diffs"))
 
   (prn "run")
-  (queue-listen-f "change" process))
+  (let [threads (map (fn [_] (Thread. (fn [] (queue-listen-f "change" process)))) (range 0 num-threads))]
+    (doseq [thread threads]
+      (prn "Start" thread)
+      (.start thread))
+
+    ; These should never exit, but stop the process if they do.
+    (doseq [thread threads]
+      (prn "Join" thread)
+      (.join thread))))
