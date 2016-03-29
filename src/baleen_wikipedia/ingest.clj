@@ -5,13 +5,14 @@
     (:require [overtone.at-at :as at-at]
               [clj-time.core :as clj-time]
               [environ.core :refer [env]])
-    (:require [baleen-wikipedia.interfaces.queue.stomp :refer [queue-send-f]])
+    (:require [baleen-wikipedia.interfaces.queue.stomp :refer [queue-send-f topic-send-f]])
     (:require [clojure.tools.logging :refer [error info debug]]
               [clojure.data.json :as json]))
 
 (defonce at-at-pool (at-at/mk-pool))
 
-(def send-f (atom nil))
+(def change-send-f (atom nil))
+(def heartbeat-send-f (atom nil))
 
 (defn- process-message [data-str]
   (try
@@ -21,7 +22,8 @@
         new-payload (json/write-str (assoc data "input-event-id" input-event-uuid))]
         (info "Process " input-event-uuid)
       (when (= event-type "edit")
-        (@send-f new-payload)))
+        (@change-send-f new-payload)
+        (@heartbeat-send-f "change")))
   (catch Exception e (prn e))))
 
 (defn- callback [type-name args]
@@ -52,7 +54,11 @@
     (.setLevel (Logger/getLogger "io.socket") Level/OFF)
     (info "Wikimedia running.")
 
-    (reset! send-f (queue-send-f "change"))
+    ; Queue for diff to pick up.
+    (reset! change-send-f (queue-send-f "change"))
+
+    ; Topic for serve to pick up so it can report inputs.
+    (reset! heartbeat-send-f (topic-send-f "heartbeat"))
     
     ; No error handling - crash the process if there's a failure.  
     (new-client))

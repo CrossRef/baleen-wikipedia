@@ -1,7 +1,9 @@
 (ns baleen-wikipedia.main
   (:require [baleen-wikipedia.ingest :as ingest]
             [baleen-wikipedia.diff :as diff]
-            [baleen-wikipedia.push :as push]))
+            [baleen-wikipedia.push :as push]
+            [baleen-wikipedia.serve :as serve])
+  (:gen-class))
 
 ; TODO load config.
 (def config
@@ -23,13 +25,13 @@
   "Push diffs to Lagotto."
   []
   (prn "PUSH")
-  (push/run)
-  )
+  (push/run))
 
 (defn main-serve
   "Run webserver."
   []
-  (prn "SERVE"))
+  (prn "SERVE")
+  (serve/run))
 
 (defn main-archive
   "Run archiver."

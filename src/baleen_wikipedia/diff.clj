@@ -7,7 +7,7 @@
               [environ.core :refer [env]]
               [org.httpkit.client :as http]
               [net.cgrand.enlive-html :as html])
-    (:require [baleen-wikipedia.interfaces.queue.stomp :refer [queue-listen-f queue-send-f]]
+    (:require [baleen-wikipedia.interfaces.queue.stomp :refer [queue-listen-f queue-send-f topic-send-f]]
               [baleen-wikipedia.util :as util])
     (:require [clojure.tools.logging :refer [error info debug]]
               [clojure.data.json :as json]
@@ -17,9 +17,10 @@
 
 ; Three outgoing queues: "publish-diffs" go to the webserver, "push-diffs" go to the Lagotto pusher, "store-diffs" get stored.
 ; Content identical.
-(def publish-diffs-send-f (atom nil))
-(def push-diffs-send-f (atom nil))
-(def store-diffs-send-f (atom nil))
+(defonce publish-diffs-send-f (atom nil))
+(defonce push-diffs-send-f (atom nil))
+(defonce store-diffs-send-f (atom nil))
+(defonce heartbeat-send-f (atom nil))
 
 (def num-threads (Integer/parseInt (or (env :diff-threads) "1")))
 
@@ -69,11 +70,8 @@
         added-dois (difference new-dois old-dois)
         removed-dois (difference old-dois new-dois)
         url (fetch-canonical-url server-name title)
-        timestamp-iso (coerce/to-string timestamp)
-
-        ]
+        timestamp-iso (coerce/to-string timestamp)]
     
-    (prn "AD" added-dois)
     ; Broadcast and fan-out to queues.
     (doseq [doi added-dois]
       (let [event-id (.toString (UUID/randomUUID))
@@ -89,9 +87,9 @@
                                      :timestamp timestamp-iso})]
         (@publish-diffs-send-f payload)
         (@push-diffs-send-f payload)
-        (@store-diffs-send-f payload)))
+        (@store-diffs-send-f payload)
+        (@heartbeat-send-f "citation")))
 
-    (prn "RD" removed-dois)
     (doseq [doi removed-dois]
       (let [event-id (.toString (UUID/randomUUID))
             payload (json/write-str {:old-revision old-revision
@@ -106,7 +104,8 @@
                                      :timestamp timestamp-iso})]
         (@publish-diffs-send-f payload)
         (@push-diffs-send-f payload)
-        (@store-diffs-send-f payload))))
+        (@store-diffs-send-f payload)
+        (@heartbeat-send-f "citation"))))
 
   (prn "DONE process-bodies")
 )
@@ -131,8 +130,7 @@
         {old-status :status old-body :body} @(http/get (build-restbase-url server-name title old-revision))
         {new-status :status new-body :body} @(http/get (build-restbase-url server-name title new-revision))
 
-        timestamp (coerce/from-long (* 1000 (get data "timestamp")))
-        ]
+        timestamp (coerce/from-long (* 1000 (get data "timestamp")))]
 
         (prn "Status" old-status new-status)
         (when (and (= 200 old-status)) (= 200 new-status)
@@ -144,6 +142,8 @@
                            :server-name server-name
                            :input-event-id input-event-id
                            :timestamp timestamp})))
+    (prn "heartbeat send")
+    (@heartbeat-send-f "diff")
   ; (.acknowledge message)
 )
 
@@ -152,6 +152,9 @@
   (reset! publish-diffs-send-f (queue-send-f "publish-diffs"))
   (reset! push-diffs-send-f (queue-send-f "push-diffs"))
   (reset! store-diffs-send-f (queue-send-f "store-diffs"))
+
+  ; Topic for serve to pick up so it can report inputs.
+  (reset! heartbeat-send-f (topic-send-f "heartbeat"))
 
   (prn "run")
   (let [threads (map (fn [_] (Thread. (fn [] (queue-listen-f "change" process)))) (range 0 num-threads))]

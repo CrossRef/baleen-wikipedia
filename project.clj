@@ -15,11 +15,17 @@
   				 [environ "1.0.2"]
            [http-kit "2.1.18"]
            [enlive "1.1.6"]
+           [ring "1.4.0"]
+           [crossref/heartbeat "0.1.2"]
            [org.apache.qpid/qpid-jms-client "0.8.0"]
-           [org.fusesource.stompjms/stompjms-client "1.19"]]
+           [org.fusesource.stompjms/stompjms-client "1.19"]
+           [liberator "0.13"]
+           [selmer "1.0.3"]
+           [compojure "1.5.0"]]
   :plugins [[lein-localrepo "0.5.3"]
             [lein-environ "1.0.2"]]
-  :main ^:skip-aot baleen-wikipedia.main
+  :main baleen-wikipedia.main
+  :aot [baleen-wikipedia.main]
   :java-source-paths ["src-java"]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
@@ -32,4 +38,6 @@
         :source-token "a147a49b-8ef1-4d2a-92b3-541ee7c87f2f"
         :auth-token ""
         :diff-threads "5"
+        :development "false"
+        :web-port "8080"
   })
