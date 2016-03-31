@@ -21,32 +21,35 @@
     (.start connection)
     (.createSession connection false Session/AUTO_ACKNOWLEDGE)))
 
-(def session (delay (create-session)))
+; (def session (delay (create-session)))
 
 (defn queue-send-f
   "Return a function that allows broadcast into the named queue."
   [queue-name]
-  (let [connection (.createConnection @factory user password)
+  (let [session (create-session)
+        connection (.createConnection @factory user password)
         destination (new StompJmsDestination (str "/queue/" queue-name))
-        producer (.createProducer @session destination)]
+        producer (.createProducer session destination)]
     (fn [text]
-      (.send producer (.createTextMessage @session text)))))
+      (.send producer (.createTextMessage session text)))))
 
 
 (defn topic-send-f
   "Return a function that allows broadcast into the named topic."
   [queue-name]
-  (let [connection (.createConnection @factory user password)
+  (let [session (create-session)
+        connection (.createConnection @factory user password)
         destination (new StompJmsDestination (str "/topic/" queue-name))
-        producer (.createProducer @session destination)]
+        producer (.createProducer session destination)]
     (fn [text]
-      (.send producer (.createTextMessage @session text)))))
+      (.send producer (.createTextMessage session text)))))
 
 (defn queue-listen-f
   [queue-name callback-f]
-  (let [connection (.createConnection @factory user password)
+  (let [session (create-session)
+        connection (.createConnection @factory user password)
         destination (new StompJmsDestination (str "/queue/" queue-name))
-        consumer (.createConsumer @session destination)]
+        consumer (.createConsumer session destination)]
     (loop []
       ; Block this thread on wait.
       (let [message (.receive consumer)]
@@ -56,9 +59,10 @@
 
 (defn topic-listen-f
   [topic-name callback-f]
-  (let [connection (.createConnection @factory user password)
+  (let [session (create-session)
+        connection (.createConnection @factory user password)
         destination (new StompJmsDestination (str "/topic/" topic-name))
-        consumer (.createConsumer @session destination)]
+        consumer (.createConsumer session destination)]
     (loop []
       ; Block this thread on wait.
       (let [message (.receive consumer)]

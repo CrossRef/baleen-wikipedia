@@ -1,6 +1,6 @@
 (ns baleen-wikipedia.util
-  (:import [java.net URLDecoder URL MalformedURLException])
-  (:require [net.cgrand.enlive-html :as html])
+  (:import [java.net URLDecoder URL MalformedURLException]
+           [org.jsoup Jsoup])
   (:require [clojure.string :as string]))
       
 (defn href-to-url [text]
@@ -10,9 +10,9 @@
     (try 
     ; These will be found in a well-deliniated URL, so we can take the rest of the link.
     (when-let [url-text (cond
-                    (.startsWith text "//") (str "http:" text)
-                    (.startsWith text "http:") text
-                    (.startsWith text "https:") text
+                    (.startsWith ^String text "//") (str "http:" text)
+                    (.startsWith ^String text "http:") text
+                    (.startsWith ^String text "https:") text
                     ; Ignore relative URLs, as they can't be DOIs or publisher links.
                     :default nil)]
       (new URL (URLDecoder/decode url-text "UTF-8")))
@@ -25,8 +25,8 @@
 
   (let [url (href-to-url url-string)]
     (when url 
-      (let [host (.getHost url)
-            url-path (.getPath url)
+      (let [host (.getHost ^URL url)
+            url-path (.getPath ^URL url)
             ; Drop leading slash.
             url-path (when-not (string/blank? url-path) (subs url-path 1))
             likely-doi (and host
@@ -36,23 +36,11 @@
         (when likely-doi url-path)))))
     
 (defn extract-a-hrefs-from-html [input]
-    (let [links (html/select (html/html-snippet input) [:a])
-          hrefs (keep #(-> % :attrs :href) links)]
+    (let [links (-> input
+            Jsoup/parse
+            (.select "a[href]"))
+          hrefs (keep #(.attr % "href") links)]
       (set hrefs)))
-
-(defn text-fragments-from-html [input]
-  (string/join " "
-    (-> input
-    (html/html-snippet)
-    (html/select [:body html/text-node])
-    (html/transform [:script] nil)
-    (html/texts))))
-
-(defn remove-all
-  "Remove a sequence of strings from a string."
-  [text dois]
-  (reduce (fn [text doi]
-            (.replace text doi "")) text dois))
 
 ;From https://meta.wikimedia.org/wiki/List_of_Wikipedias#1.2B_articles
 (def server-names {
@@ -345,5 +333,5 @@
   "kr" "Kanuri"})
 
 (defn server-name [server]
-  (let [subdomain (first (.split server "\\."))]
+  (let [subdomain (first (.split ^String server "\\."))]
     (str (get server-names subdomain subdomain) " Wikipedia")))

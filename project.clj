@@ -1,4 +1,4 @@
-(defproject baleen-wikipedia "0.1.0-SNAPSHOT"
+(defproject baleen-wikipedia "0.2.0"
   :description "Wikipedia Source for Crossref Event Data"
   :url "http://github.com/crossref/baleen-wikipedia"
   :license {:name "Eclipse Public License"
@@ -21,9 +21,12 @@
            [org.fusesource.stompjms/stompjms-client "1.19"]
            [liberator "0.13"]
            [selmer "1.0.3"]
-           [compojure "1.5.0"]]
+           [compojure "1.5.0"]
+           [org.jsoup/jsoup "1.8.3"]
+           ]
   :plugins [[lein-localrepo "0.5.3"]
-            [lein-environ "1.0.2"]]
+            [lein-environ "1.0.2"]
+            [jonase/eastwood "0.2.3"]]
   :main baleen-wikipedia.main
   :aot [baleen-wikipedia.main]
   :java-source-paths ["src-java"]

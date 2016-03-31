@@ -40,38 +40,24 @@
 
 
 (defn dois-from-body
-  "Fetch the set of DOIs that are mentioned in the body text.
-  Also flag up the presence of DOIs in text that aren't linked."
+  "Fetch the set of DOIs that are mentioned in the body text."
   [body]
   ; As some character encoding inconsistencies crop up from time to time in the live stream, this reduces the chance of error. 
   (let [hrefs (util/extract-a-hrefs-from-html body)
-
-        dois (set (keep util/is-doi-url? hrefs))
-
-        ; Get the body text i.e. only visible stuff, not a href links.
-        body-text (util/text-fragments-from-html body)
-
-        ; Remove the DOIs that we already found.
-        body-text-without-dois (util/remove-all body-text dois)
-
-        ; As we only want to flag the existence of non-linked DOIs for later investigation,
-        ; we only need to capture the prefix.
-        unlinked-doi-prefixes (re-seq #"10\.\d\d\d+/" body-text-without-dois)
-
-        num-unlinked-dois (count unlinked-doi-prefixes)]
-    [dois num-unlinked-dois]))
-
-
+        dois (set (keep util/is-doi-url? hrefs))]
+    dois))
 
 (defn process-bodies [{old-revision :old-revision old-body :old-body new-revision :new-revision new-body :new-body title :title server-name :server-name input-event-id :input-event-id timestamp :timestamp}]
   (prn "process bodies")
-  (let [[old-dois _] (dois-from-body old-body)
-        [new-dois num-unlinked-dois] (dois-from-body new-body)
+  (let [old-dois (dois-from-body old-body)
+        new-dois (dois-from-body new-body)
         added-dois (difference new-dois old-dois)
         removed-dois (difference old-dois new-dois)
-        url (fetch-canonical-url server-name title)
+        url (when (or (not-empty added-dois)
+                      (not-empty removed-dois))
+              (fetch-canonical-url server-name title))
         timestamp-iso (coerce/to-string timestamp)]
-    
+    (prn "Process bodies")
     ; Broadcast and fan-out to queues.
     (doseq [doi added-dois]
       (let [event-id (.toString (UUID/randomUUID))
@@ -105,10 +91,7 @@
         (@publish-diffs-send-f payload)
         (@push-diffs-send-f payload)
         (@store-diffs-send-f payload)
-        (@heartbeat-send-f "citation"))))
-
-  (prn "DONE process-bodies")
-)
+        (@heartbeat-send-f "citation")))))
 
 
 (defn process
@@ -133,7 +116,7 @@
         timestamp (coerce/from-long (* 1000 (get data "timestamp")))]
 
         (prn "Status" old-status new-status)
-        (when (and (= 200 old-status)) (= 200 new-status)
+        (when (and (= 200 old-status) (= 200 new-status))
           ; Put a channel in here for disconnect.
           ; Without this there's a memory leak with large buffers being retained.
           (process-bodies {:old-revision old-revision :old-body old-body
@@ -142,11 +125,9 @@
                            :server-name server-name
                            :input-event-id input-event-id
                            :timestamp timestamp})))
-    (prn "heartbeat send")
     (@heartbeat-send-f "diff")
   ; (.acknowledge message)
 )
-
 
 (defn run []
   (reset! publish-diffs-send-f (queue-send-f "publish-diffs"))
@@ -156,13 +137,12 @@
   ; Topic for serve to pick up so it can report inputs.
   (reset! heartbeat-send-f (topic-send-f "heartbeat"))
 
-  (prn "run")
   (let [threads (map (fn [_] (Thread. (fn [] (queue-listen-f "change" process)))) (range 0 num-threads))]
     (doseq [thread threads]
       (prn "Start" thread)
-      (.start thread))
+      (.start ^Thread thread))
 
     ; These should never exit, but stop the process if they do.
     (doseq [thread threads]
       (prn "Join" thread)
-      (.join thread))))
+      (.join ^Thread thread))))
